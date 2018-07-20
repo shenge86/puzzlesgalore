@@ -4,13 +4,13 @@
 #include "stdafx.h"
 #include <iostream>
 #include <string>
+#include <vector>
+#include <algorithm>
 #include <cstdlib>
 #include <ctime>
+#include <cctype>
 
-using std::cout;
-using std::cin;
-using std::endl;
-using std::string;
+using namespace std;
 
 // FUNCTIONS
 bool checkDeath(int killed, int adventurers) {
@@ -21,10 +21,24 @@ bool checkDeath(int killed, int adventurers) {
 	}
 }
 
+/* ONLY FOR ARRAY
 void displayInventory(int numItems, string inventory[]) {
 	for (int i = 0; i < numItems; ++i) {
 		cout << i+1 << ". ";
 		cout << inventory[i] << endl;
+	}
+}
+*/
+
+void displayInventory(vector<string> inventory) {
+	if (inventory.empty()) {
+		cout << "You have nothing at all except the clothes on your back and your boots. Hopefully, your sanity as well.\n";
+	}
+	else {
+		for (unsigned int i = 0; i < inventory.size(); ++i) {
+			cout << i << ". ";
+			cout << inventory[i] << endl;
+		}
 	}
 }
 
@@ -39,45 +53,226 @@ void showBoard(int ROWS, int COLUMNS, char board[][3]) {
 
 int main()
 {
-	// declare constants and variables
+	// CONSTANTS & VARIABLES
+	int adventurers, killed, survivors, choicenum;
+	int adventurercost = 100;
+	string leader;
 	const int GOLD_PIECES = 900;
 	int money = 1000;
 
 	const int MAX_ITEMS = 10;
+	/* DOn't use the following. Arrays suck. Use vector.
 	string inventory[MAX_ITEMS];
 	int numItems = 0;
 	inventory[numItems++] = "steel short sword";
 	inventory[numItems++] = "fine leather armor";
 	inventory[numItems++] = "steel dagger";
+	*/
+
+	// hero's inventory with starting items
+	vector<string> inventory;
+	inventory.push_back("steel short sword");
+	inventory.push_back("fine leather armor");
+	inventory.push_back("steel dagger");
 
 	const int ROWS = 3;
 	const int COLUMNS = 3;
 	char board[ROWS][COLUMNS] = { {'0', 'X', '0'}, {' ', 'X', 'X'}, {'X','O','O'} };
 
-	int adventurers, killed, survivors, choicenum;
-	int adventurercost = 100;
-	string leader;
-
-
-	// START GAME
 	// if random number generator here is not used, it will output the same sequence of random numbers every time it is run.
 	srand(static_cast<unsigned int>(time(0))); // seed random number generator
 	int secretNumber = rand() % 100 + 1;
 	int tries = 0;
 	int guess;
 
-	// SETUP GAME
-	cout << "Welcome to Lost Fortune " << string(3, '!') << " \n\n";
+	// SHOW HIGH SCORES
+	cout << "Welcome to Lost Fortune " << string(3, '!') << " \n";
+	cout << "***********************\n\n";
+	
+	// START GAME
+	cout << "Do you wish to start a new game?\n";
+	cout << "1. Yes.\n";
+	cout << "2. No, I want to quit the game.\n";
+	cout << "3. No, load me a previously saved game.\n";
+	cout << "4. No, I want to look at high scores.\n";
+	cin >> choicenum;
+	if (choicenum == 2) {
+		return 0;
+	} 
+	
+	if(choicenum == 3) {
+		cout << "No saved game found. Let's start with a new game!\n";
+	}
+	
+	if (choicenum == 4) {
+		vector<int>::const_iterator iter;
+		vector<int> scores;
+		scores.push_back(1500);
+		scores.push_back(2500);
+		scores.push_back(4500);
+		
+		cout << "\nHigh Scores:\n";
+		for (iter = scores.begin(); iter != scores.end(); ++iter) {
+			cout << *iter << endl;
+		}
 
-	cout << "Enter your name: ";
+		int score;
+		cout << "\nEnter a score to find: ";
+		cin >> score;
+
+		iter = find(scores.begin(), scores.end(), score);
+		if (iter != scores.end()) {
+			cout << "Scores found.\n";
+		}
+		else {
+			cout << "Scores not found.\n";
+		}
+
+		cout << "\nRandomizing scores.";
+		srand(static_cast<unsigned int>(time(0)));
+		random_shuffle(scores.begin(), scores.end());
+		cout << "\nHigh Scores:\n";
+		for (iter = scores.begin(); iter != scores.end(); ++iter) {
+			cout << *iter << endl;
+		}
+
+		cout << "\nSorting scores.";
+		sort(scores.begin(), scores.end());
+		cout << "\nHigh Scores:\n";
+		for (iter = scores.begin(); iter != scores.end(); ++iter) {
+			cout << *iter << endl;
+		}
+
+		system("pause");
+	}
+
+	// SETUP GAME
+	cout << "What is your name, dear esteemed player?\n";
 	cin >> leader;
 
-	cout << "\nAside from having " << money << " pieces of gold, you start with these items: \n";
-	displayInventory(numItems, inventory);
+	cout << "Would you like to play hangman as a bonus to your stats? Warning! If you lose, your stats drop by 1 point for each attribute.\n";
+	cout << "1. Yes. I will take the risk! \n";
+	cout << "2. No. I want to play it safe.\n";
+	cin >> choicenum;
+	if (choicenum == 1) { // play hangman
+		// SETUP
+		const int MAX_WRONG = 8;
+		vector<string> words;
+		words.push_back("SERAPH");
+		words.push_back("SYMBIOSIS");
+		words.push_back("SYZYGY");
+		words.push_back("GERMANE");
+		words.push_back("RELEVANT");
+		words.push_back("PANACEA");
+		words.push_back("SERENDIPITY");
+		words.push_back("METALHEAD");
+		words.push_back("VOID");
 
-	cout << "\nAt the nearby tavern before you head towards the mountains, you decide to hire some adventurers. Each adventurer here will cost you " << adventurercost << " gold pieces.";
-	cout << " How many do you hire?\n";
+		srand(static_cast<unsigned int>(time(0)));
+		random_shuffle(words.begin(), words.end());
+		const string THE_WORD = words[0];
+		int wrong = 0;
+		string soFar(THE_WORD.size(), '-');
+		string used = "";
+
+		// main loop
+		while ((wrong < MAX_WRONG) && (soFar != THE_WORD)) {
+			cout << "\n\nYou have " << (MAX_WRONG - wrong);
+			cout << " incorrect guesses left.\n";
+			cout << "\nYou've used the following letters:\n" << used << endl;
+			cout << "\nSo far, the word is:\n" << soFar << endl;
+
+			char guess;
+			cout << "\n\nEnter a letter from a to z for your guess: ";
+			cin >> guess;
+			guess = toupper(guess);
+			while (used.find(guess) != string::npos) { // if word is not NOT FOUND in already guessed string
+				cout << "Try another letter. You've already guessed " << guess << endl;
+				cout << "Enter your next guess: ";
+				cin >> guess;
+				guess = toupper(guess);
+			}
+			
+			used += guess;
+
+			if (THE_WORD.find(guess) != string::npos) { // if the word is not NOT FOUND. Better to use npos instead of -1 since code is more readable)
+				cout << "That is right! " << guess << " is in the word.\n";
+				for (int i = 0; i < THE_WORD.length(); i++) {
+					if (THE_WORD[i] == guess) {
+						soFar[i] = guess;
+					}
+				}
+			}
+			else {
+				cout << "Sorry, " << guess << " isn't in the word.\n";
+				++wrong;
+			}
+		}
+
+		// shutdown
+		if (wrong >= MAX_WRONG) {
+			cout << "\nTime for your punishment! All stats reduced by 1.";
+		}
+		else {
+			cout << "\nTime for your reward. All stats increased by 1.";
+		}
+		return 0;
+	}
+
+	// display starting stats
+	cout << "Your current stats: \n";
+	cout << "Health: \n";
+	cout << "Agility: \n";
+	cout << "Intelligence: \n";
+	cout << "Leadership: \n";
+	cout << "Luck: \n";
+
+	cout << "You open your eyes and look to the pillow next to you. Relieved to see that your money pouch with " << money << " pieces of gold still there next to you, you look around the room.";
+	cout << "On the floor, you see your shoes, cloak, clothes and a few more useful items for adventuring: \n";
+	displayInventory(inventory);
+
+	cout << "\nAfter you washed up yourself, you went downstairs and had a hearty breakfast. The meaty adventurer from yesterday who has wanted to buy some of your things is still there loudly belching and drinking beer. He looked disgusting but he does have some money which you really need. You ponder on whether you want to sell anything. \n";
+	cout << "1. Sell.\n";
+	cout << "2. Don't sell.\n";
+	cin >> choicenum;
+
+	if (choicenum == 1) {
+		cout << "You approach the meathead slowly and he raises his head to look at you. 'What do you want?' he growled.\n";
+		cout << "'You still want some of my stuff?' you asked ignoring another belch that followed after his rude question.\n";
+		cout << "He waved his hand impatiently waiting for you to continue. You look at your inventory and decide to sell:\n";
+		displayInventory(inventory);
+		cin >> choicenum;
+		int worth = 300;
+		cout << "'How about the " << inventory[choicenum] << " for " << worth << " gold pieces?' you asked.\n";
+		cout << "'Too high!' he said. 'I will take it for 100 less.'\n";
+		cout << "'That is highway robbery!' you exclaimed.\n";
+		cout << "'Too bad. Take it or scram,' he said with a scowl.\n";
+		cout << "You decide to: \n";
+		cout << "1. Sell it anyway. You need the money.\n";
+		cout << "2. Walk away.\n";
+		cin >> choicenum;
+		if (choicenum == 1) {
+			cout << "'Nice doing business with ya,' the man said with a wicked grin. \n";
+			cout << "You pocket the " << worth - 100 << " gold pieces he gives you and leave.\n";
+			inventory.erase(inventory.begin() + choicenum);
+			money += worth;
+			cout << "You now have " << money << " gold pieces. You currently possess: \n";
+			displayInventory(inventory);
+		}
+		else {
+			cout << "He gave you a scowl as you walked away without a word.\n";
+		}
+	}
+
+	cout << "Hiring some adventurers sounds like a good idea. You see a sign posting outside of the inn that says each newbie adventurer costs " << adventurercost << " gold pieces to hire.";
+	cout << " Entering the adventurer's guild, you decide to hire a few. How many adventurers do you wish to hire?\n";
 	cin >> adventurers;
+
+	// hire 3 at a minimum
+	if (adventurers == 0) {
+		cout << "Hiring no one sounds very risky. You decide to hire three adventurers.";
+		adventurers = 3;
+	}
 
 	// if more money than you can afford, then set to max number of people you bought and set money to 0
 	if (adventurercost * adventurers > money) {
@@ -85,20 +280,29 @@ int main()
 		adventurers = (money / adventurercost);
 		cout << " You hired " << adventurers << " people.";
 	}
+	// reduce money
 	money -= adventurercost * adventurers;
 	cout << "You have " << money << " gold pieces left.";
-	adventurers++;
+	adventurers++; // include yourself here from now on
 
 	// Start the story
-	cout << "\nYour brave group of " << adventurers << " including yourself set out on the quest.";
+	cout << "\nYour intrepid group of " << adventurers << " including yourself sets out for the epic adventure";
 	cout << " -- in search of the lost treasure in the mountain dwellings of the now extinct ancient dwarves. ";
 	cout << "The group was led by you, that legendary rogue named " << leader << ".\n\n";
-	
+	cout << "These are the thoughts that go through your head. Unfortunately, reality proves to be a far cry. Your crew is already grumbling about your slow pace.";
+
+	// Thief
+	cout << "More trouble was to follow. Before you even reached the mountains, an adventurer decided to lighten your load a bit. ";
+	cout << " Considering that your leadership is already under jeopardy, you decided to ignore it.\n";
+	inventory.pop_back();
+	cout << " You currently possess: \n";
+	displayInventory(inventory);
+
 	// Ogre attack
 	killed = rand() % adventurers + 1;
 	survivors = adventurers - killed;
 
-	cout << "Outside of the mountain entrance, a band of marauding ogres ambushed the party. The adventurers won but " << killed << " were killed.\n\n";
+	cout << "\nOutside of the mountain entrance, a band of marauding ogres ambushed the party. The adventurers won but " << killed << " were killed.\n\n";
 
 	if (survivors == 0) {
 		checkDeath(killed, adventurers);
@@ -118,10 +322,10 @@ int main()
 	
 	do {
 		cout << "You decide to take a look of your inventory. You decide to use: " << endl;
-		displayInventory(numItems, inventory);
+		displayInventory(inventory);
 		cin >> choicenum;
 
-		if (choicenum < numItems) {
+		if (choicenum < inventory.size() && choicenum > 0) {
 			cout << "You place the " << inventory[choicenum - 1] << " on to the empty box." << endl;
 			cout << "Ouch! You were hit on the arm with an arrow from the side of the cave. " << endl;
 		}
@@ -136,6 +340,7 @@ int main()
 	cout << endl;
 
 	cout << "\nWaiting for a moment in anticipation, the door opens!" << endl;
+	cout << "You take the " << inventory[0] << " back and led the way into the cavern.";
 
 	// Part with word game
 	cout << "\nUpon entering the cavern, you notice immediately a giant metal gate in front of you. There doesn't seem to be an obvious way to open this gate. Suddenly, a loud voice booms in the cavern which almost makes you deaf.";
@@ -238,6 +443,9 @@ int main()
 	cout << "You now have " << money << " gold pieces in total.\n\n";
 
 	// Next part of journey...
+
+
+	
 
 
 	// cin.get();
